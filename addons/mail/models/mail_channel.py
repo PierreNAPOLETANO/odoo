@@ -431,9 +431,7 @@ class Channel(models.Model):
             if channel.channel_type != 'channel' and not channel.is_member:
                 return False
             if channel.group_public_id:
-                if not partner.user_ids or channel.group_public_id not in partner.user_ids.groups_id:
-                    return False
-                if channel.group_public_id not in self.env.user.groups_id:
+                if not partner.user_ids or channel.group_public_id not in partner.user_ids.groups_id or channel.group_public_id not in self.env.user.groups_id:
                     return False
         return True
 
@@ -458,10 +456,7 @@ class Channel(models.Model):
         members = self.env['mail.channel.member'].search(channel_member_domain)
         for member in members:
             member.rtc_inviting_session_id = False
-            if member.partner_id:
-                target = member.partner_id
-            else:
-                target = member.guest_id
+            target = member.partner_id if member.partner_id else member.guest_id
             invitation_notifications.append((target, 'mail.thread/insert', {
                 'id': self.id,
                 'model': 'mail.channel',
@@ -497,10 +492,7 @@ class Channel(models.Model):
         pids = msg_vals.get('partner_ids', []) if msg_vals else msg_sudo.partner_ids.ids
 
         # notify only user input (comment or incoming emails)
-        if message_type not in ('comment', 'email'):
-            return []
-        # notify only mailing lists or if mentioning recipients
-        if not pids:
+        if message_type not in ('comment', 'email') or not pids:
             return []
 
         email_from = tools.email_normalize(msg_vals.get('email_from') or msg_sudo.email_from)
@@ -628,12 +620,9 @@ class Channel(models.Model):
     def _message_add_reaction_after_hook(self, message, content):
         self.ensure_one()
         guest = self.env['mail.guest']._get_guest_from_context()
-        if self.env.user._is_public() and guest:
-            guests = [('insert', {'id': guest.id})]
-            partners = []
-        else:
-            guests = []
-            partners = [('insert', {'id': self.env.user.partner_id.id})]
+
+        guests = [('insert', {'id': guest.id})] if self.env.user._is_public() and guest else []
+        partners = [] if self.env.user._is_public() and guest else [('insert', {'id': self.env.user.partner_id.id})]
         reactions = self.env['mail.message.reaction'].sudo().search([('message_id', '=', message.id), ('content', '=', content)])
         self.env['bus.bus']._sendone(self, 'mail.message/insert', {
             'id': message.id,
@@ -650,12 +639,9 @@ class Channel(models.Model):
     def _message_remove_reaction_after_hook(self, message, content):
         self.ensure_one()
         guest = self.env['mail.guest']._get_guest_from_context()
-        if self.env.user._is_public() and guest:
-            guests = [('insert-and-unlink', {'id': guest.id})]
-            partners = []
-        else:
-            guests = []
-            partners = [('insert-and-unlink', {'id': self.env.user.partner_id.id})]
+
+        guests = [('insert-and-unlink', {'id': guest.id})] if self.env.user._is_public() and guest else []
+        partners = [] if self.env.user._is_public() and guest else [('insert-and-unlink', {'id': self.env.user.partner_id.id})]
         reactions = self.env['mail.message.reaction'].sudo().search([('message_id', '=', message.id), ('content', '=', content)])
         self.env['bus.bus']._sendone(self, 'mail.message/insert', {
             'id': message.id,
@@ -740,10 +726,8 @@ class Channel(models.Model):
         current_partner = self.env['res.partner']
         current_guest = self.env['mail.guest']
         guest = self.env['mail.guest']._get_guest_from_context()
-        if self.env.user._is_public and guest:
-            current_guest = guest
-        else:
-            current_partner = self.env.user.partner_id
+
+        current_guest = guest if self.env.user._is_public and guest else self.env.user.partner_id
         all_needed_members_domain = expression.OR([
             [('channel_id.channel_type', '!=', 'channel')],
             [('rtc_inviting_session_id', '!=', False)],

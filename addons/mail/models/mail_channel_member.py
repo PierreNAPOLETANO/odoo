@@ -225,10 +225,7 @@ class ChannelMember(models.Model):
         members = self.env['mail.channel.member'].search(channel_member_domain)
         for member in members:
             member.rtc_inviting_session_id = self.rtc_session_ids.id
-            if member.partner_id:
-                target = member.partner_id
-            else:
-                target = member.guest_id
+            target = member.partner_id if member.partner_id else member.guest_id
             invitation_notifications.append((target, 'mail.thread/insert', {
                 'id': self.channel_id.id,
                 'model': 'mail.channel',

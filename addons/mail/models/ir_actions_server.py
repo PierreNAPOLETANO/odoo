@@ -203,10 +203,7 @@ class ServerActions(models.Model):
 
         if self.mail_post_method in ('comment', 'note'):
             records = self.env[self.model_name].with_context(cleaned_ctx).browse(res_ids)
-            if self.mail_post_method == 'comment':
-                subtype_id = self.env['ir.model.data']._xmlid_to_res_id('mail.mt_comment')
-            else:
-                subtype_id = self.env['ir.model.data']._xmlid_to_res_id('mail.mt_note')
+            subtype_id = self.env['ir.model.data']._xmlid_to_res_id('mail.mt_comment') if self.mail_post_method == 'comment' else self.env['ir.model.data']._xmlid_to_res_id('mail.mt_note')
             for record in records:
                 record.message_post_with_template(
                     self.template_id.id,

@@ -13,9 +13,7 @@ def _admin_password_warn(uid):
 
     Uses mail.channel directly because using mail.thread might send an email instead.
     """
-    if request.params['password'] != 'admin':
-        return
-    if ipaddress.ip_address(request.httprequest.remote_addr).is_private:
+    if request.params['password'] != 'admin' or ipaddress.ip_address(request.httprequest.remote_addr).is_private:
         return
     env = request.env(user=SUPERUSER_ID, su=True)
     admin = env.ref('base.partner_admin')

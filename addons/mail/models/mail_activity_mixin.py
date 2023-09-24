@@ -400,10 +400,7 @@ class MailActivityMixin(models.AbstractModel):
             _logger.warning("Scheduled deadline should be a date (got %s)", date_deadline)
         if act_type_xmlid:
             activity_type_id = self.env['ir.model.data']._xmlid_to_res_id(act_type_xmlid, raise_if_not_found=False)
-            if activity_type_id:
-                activity_type = self.env['mail.activity.type'].browse(activity_type_id)
-            else:
-                activity_type = self._default_activity_type()
+            activity_type = self.env['mail.activity.type'].browse(activity_type_id) if activity_type_id else self._default_activity_type()
         else:
             activity_type_id = act_values.get('activity_type_id', False)
             activity_type = self.env['mail.activity.type'].browse(activity_type_id) if activity_type_id else self.env['mail.activity.type']

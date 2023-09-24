@@ -269,10 +269,7 @@ Kind Regards,</p>"""
         if lang_author:
             self = self.with_context(lang=lang_author)
 
-        if not is_html_empty(self.alias_bounced_content):
-            body = self.alias_bounced_content
-        else:
-            body = self._get_alias_bounced_body_fallback(message_dict)
+        body = self.alias_bounced_content if not is_html_empty(self.alias_bounced_content) else self._get_alias_bounced_body_fallback(message_dict)
         return self.env['ir.qweb']._render('mail.mail_bounce_alias_security', {
             'body': body,
             'message': message_dict

@@ -46,7 +46,4 @@ class MailChatController(BusController):
     @route(['/mail/chat_history'], type="json", auth="public", cors="*")
     def mail_chat_history(self, uuid, last_id=False, limit=20):
         channel = request.env["mail.channel"].sudo().search([('uuid', '=', uuid)], limit=1)
-        if not channel:
-            return []
-        else:
-            return channel._channel_fetch_message(last_id, limit)
+        return [] if not channel else channel._channel_fetch_message(last_id, limit)

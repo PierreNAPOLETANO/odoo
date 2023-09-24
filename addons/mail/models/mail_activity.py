@@ -180,22 +180,19 @@ class MailActivity(models.Model):
 
     def _filter_access_rules(self, operation):
         # write / unlink: valid for creator / assigned
+        valid = super(MailActivity, self)._filter_access_rules(operation) if operation in ('write', 'unlink') else self.env[self._name]
+
         if operation in ('write', 'unlink'):
-            valid = super(MailActivity, self)._filter_access_rules(operation)
             if valid and valid == self:
                 return self
-        else:
-            valid = self.env[self._name]
         return self._filter_access_rules_remaining(valid, operation, '_filter_access_rules')
 
     def _filter_access_rules_python(self, operation):
         # write / unlink: valid for creator / assigned
+        valid = super(MailActivity, self)._filter_access_rules_python(operation) if operation in ('write', 'unlink') else self.env[self._name]
         if operation in ('write', 'unlink'):
-            valid = super(MailActivity, self)._filter_access_rules_python(operation)
             if valid and valid == self:
                 return self
-        else:
-            valid = self.env[self._name]
         return self._filter_access_rules_remaining(valid, operation, '_filter_access_rules_python')
 
     def _filter_access_rules_remaining(self, valid, operation, filter_access_rules_method):
@@ -281,20 +278,15 @@ class MailActivity(models.Model):
         activities = super(MailActivity, self).create(vals_list)
 
         # find partners related to responsible users, separate readable from unreadable
+        readable_user_partners = user_partners._filter_access_rules_python('read') if any(user != self.env.user for user in activities.user_id) else self.env.user.partner_id
         if any(user != self.env.user for user in activities.user_id):
             user_partners = activities.user_id.partner_id
-            readable_user_partners = user_partners._filter_access_rules_python('read')
-        else:
-            readable_user_partners = self.env.user.partner_id
 
         # when creating activities for other: send a notification to assigned user;
         # in case of manually done activity also check target has rights on document
         # otherwise we prevent its creation. Automated activities are checked since
         # they are integrated into business flows that should not crash.
-        if self.env.context.get('mail_activity_quick_update'):
-            activities_to_notify = self.env['mail.activity']
-        else:
-            activities_to_notify = activities.filtered(lambda act: act.user_id != self.env.user)
+        activities_to_notify = self.env['mail.activity'] if self.env.context.get('mail_activity_quick_update') else activities.filtered(lambda act: act.user_id != self.env.user)
         activities_to_notify.filtered(lambda act: not act.automated)._check_access_assignation()
         if activities_to_notify:
             to_sudo = activities_to_notify.filtered(lambda act: act.user_id.partner_id not in readable_user_partners)
@@ -413,10 +405,7 @@ class MailActivity(models.Model):
         for doc_model, doc_ids in activity_to_documents.items():
             # fall back on related document access right checks. Use the same as defined for mail.thread
             # if available; otherwise fall back on read
-            if hasattr(self.env[doc_model], '_mail_post_access'):
-                doc_operation = self.env[doc_model]._mail_post_access
-            else:
-                doc_operation = 'read'
+            doc_operation = self.env[doc_model]._mail_post_access if hasattr(self.env[doc_model], '_mail_post_access') else 'read'
             DocumentModel = self.env[doc_model].with_user(access_rights_uid or self._uid)
             right = DocumentModel.check_access_rights(doc_operation, raise_exception=False)
             if right:
@@ -448,11 +437,7 @@ class MailActivity(models.Model):
         # Rules do not apply to administrator
         if not self.env.is_superuser():
             allowed_ids = self._search(domain, count=False)
-            if allowed_ids:
-                domain = expression.AND([domain, [('id', 'in', allowed_ids)]])
-            else:
-                # force void result if no allowed ids found
-                domain = expression.AND([domain, [(0, '=', 1)]])
+            domain = expression.AND([domain, [('id', 'in', allowed_ids)]]) if allowed_ids else expression.AND([domain, [(0, '=', 1)]])
 
         return super(MailActivity, self)._read_group_raw(
             domain=domain, fields=fields, groupby=groupby, offset=offset,

@@ -87,10 +87,7 @@ class MailGroup(models.Model):
     @api.depends('alias_name', 'alias_domain')
     def _compute_alias_fullname(self):
         for group in self:
-            if group.alias_name and group.alias_domain:
-                group.alias_fullname = f'{group.alias_name}@{group.alias_domain}'
-            else:
-                group.alias_fullname = group.alias_name
+            group.alias_fullname = f'{group.alias_name}@{group.alias_domain}' if group.alias_name and group.alias_domain else group.alias_name
 
     @api.depends('mail_group_message_ids.create_date', 'mail_group_message_ids.moderation_status')
     def _compute_mail_group_message_last_month_count(self):
@@ -198,10 +195,7 @@ class MailGroup(models.Model):
 
     @api.onchange('access_mode')
     def _onchange_access_mode(self):
-        if self.access_mode == 'public':
-            self.alias_contact = 'everyone'
-        else:
-            self.alias_contact = 'followers'
+        self.alias_contact = 'everyone' if self.access_mode == 'public' else 'followers'
 
     @api.onchange('moderation')
     def _onchange_moderation(self):

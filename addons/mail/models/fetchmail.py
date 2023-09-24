@@ -68,10 +68,7 @@ class FetchmailServer(models.Model):
     @api.depends('server_type')
     def _compute_server_type_info(self):
         for server in self:
-            if server.server_type == 'local':
-                server.server_type_info = _('Use a local script to fetch your emails and create new records.')
-            else:
-                server.server_type_info = False
+            server.server_type_info = _('Use a local script to fetch your emails and create new records.') if server.server_type == 'local' else False
 
     @api.onchange('server_type', 'is_ssl', 'object_id')
     def onchange_server_type(self):
@@ -124,16 +121,10 @@ odoo_mailgate: "|/path/to/odoo-mailgate.py --host=localhost -u %(uid)d -p PASSWO
             raise UserError(_('The server "%s" cannot be used because it is archived.', self.display_name))
         connection_type = self._get_connection_type()
         if connection_type == 'imap':
-            if self.is_ssl:
-                connection = IMAP4_SSL(self.server, int(self.port))
-            else:
-                connection = IMAP4(self.server, int(self.port))
+            connection = IMAP4_SSL(self.server, int(self.port)) if self.is_ssl else IMAP4(self.server, int(self.port))
             self._imap_login(connection)
         elif connection_type == 'pop':
-            if self.is_ssl:
-                connection = POP3_SSL(self.server, int(self.port), timeout=MAIL_TIMEOUT)
-            else:
-                connection = POP3(self.server, int(self.port), timeout=MAIL_TIMEOUT)
+            connection = POP3_SSL(self.server, int(self.port), timeout=MAIL_TIMEOUT) if self.is_ssl else POP3(self.server, int(self.port), timeout=MAIL_TIMEOUT)
             #TODO: use this to remove only unread messages
             #connection.user("recent:"+server.user)
             connection.user(self.user)

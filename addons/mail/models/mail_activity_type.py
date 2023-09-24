@@ -115,7 +115,4 @@ class MailActivityType(models.Model):
 
     def _inverse_triggered_next_type_id(self):
         for activity_type in self:
-            if activity_type.triggered_next_type_id:
-                activity_type.chaining_type = 'trigger'
-            else:
-                activity_type.chaining_type = 'suggest'
+            activity_type.chaining_type = 'trigger' if activity_type.triggered_next_type_id else 'suggest'
